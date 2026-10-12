@@ -6,6 +6,7 @@ window.OrbitaCloud = (() => {
   const identity=tg?.initDataUnsafe?.user?.id;
   const enabled=!!(tg?.initData && Number.isSafeInteger(identity));
   const key='orbita-run-v1-'+identity;
+  let pendingSave=null;
   let active=null, busy=false, release=null, profile=null, status=enabled?'Подключаем бортовой журнал…':'Для общего рейтинга открой игру кнопкой в Telegram.';
   function emit(message){if(message)status=message;window.dispatchEvent(new Event('orbita-cloud'));}
   function read(){const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null;}
@@ -43,16 +44,22 @@ window.OrbitaCloud = (() => {
   async function refresh(sort='distance'){
     const result=await api('leaderboard',{sort});profile=result.profile;emit();return result;
   }
-  async function retry(){
-    if(!enabled||active||busy)return;
+  function retry(){
+    if(!enabled||active||busy)return pendingSave||Promise.resolve();
     busy=true;
-    try{await lock();const saved=read();if(saved){emit('Отправляем сохранённый полёт…');await sendStored(saved);}await refresh();emit('Результаты синхронизированы с таблицей.');}
-    catch(error){emit(error.message);}
-    finally{unlock();busy=false;}
+    pendingSave=(async()=>{
+      try{await lock();const saved=read();if(saved){emit('Отправляем сохранённый полёт…');await sendStored(saved);}}
+      catch(error){emit(error.message);}
+      finally{unlock();busy=false;}
+    })();
+    const job=pendingSave;
+    // Reading the leaderboard must not block registration of a new flight.
+    return job.then(()=>refresh()).catch(error=>emit(error.message));
   }
   async function begin(){
     if(!enabled)throw new Error('Для записи результата запусти игру кнопкой в @SpaceRacingBot.');
-    if(busy||active)throw new Error('Дождись завершения сохранения.');
+    if(pendingSave)await pendingSave;
+    if(busy||active)throw new Error('Полёт уже запускается или открыт.');
     busy=true;
     try{
       await lock();const saved=read();if(saved)await sendStored(saved);
@@ -69,12 +76,15 @@ window.OrbitaCloud = (() => {
     active.result={distance:Math.floor(distance),coins:Math.floor(coins),durationMs:Math.floor(durationMs)};
     persist(active);
   }
-  async function finish(distance,coins,durationMs){
-    if(!active)return;
+  function finish(distance,coins,durationMs){
+    if(!active||busy)return pendingSave||Promise.resolve();
     busy=true;
-    try{checkpoint(distance,coins,durationMs);emit('Сохраняем результат…');await sendStored(active);try{await refresh();}catch{emit('Полёт записан. Рейтинг обновится при следующем подключении.');}}
-    catch(error){emit('Результат ожидает отправки. '+error.message);}
-    finally{active=null;busy=false;unlock();}
+    pendingSave=(async()=>{
+      try{checkpoint(distance,coins,durationMs);emit('Сохраняем результат…');await sendStored(active);}
+      catch(error){emit('Результат ожидает отправки. '+error.message);}
+      finally{active=null;busy=false;unlock();}
+    })();
+    return pendingSave.then(()=>refresh()).catch(()=>emit('Рейтинг обновится при следующем подключении.'));
   }
   window.addEventListener('online',()=>retry());
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)retry();});
