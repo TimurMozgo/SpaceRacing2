@@ -21,3 +21,5 @@
 @media(max-width:700px){.bonus-upgrades-grid{grid-template-columns:1fr;gap:14px}.bonus-upgrade{padding:22px}.bonus-duration b{font-size:31px}}
 
 #flightEvent{position:absolute;top:145px;left:50%;transform:translate(-50%,-6px);width:max-content;max-width:90%;padding:10px 14px;border:1px solid #81deff55;border-radius:12px;background:#091522e6;color:#b9efff;font-size:11px;font-weight:700;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity .7s,transform .7s}#flightEvent.visible{opacity:1;transform:translate(-50%,0)}#flightEvent[data-kind="meteor"]{color:#ffcf96;border-color:#ffb15c66;background:#25170fe6}
+
+.rank-avatar,.profile-heading .avatar{overflow:hidden;flex-shrink:0}.rank-avatar img,.profile-heading .avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
