@@ -79,5 +79,5 @@ window.OrbitaCloud = (() => {
   window.addEventListener('online',()=>retry());
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)retry();});
   setInterval(()=>{if(enabled&&!active&&!busy&&read())retry();},30000);
-  return {enabled,identity,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
+  return {starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
 })();
