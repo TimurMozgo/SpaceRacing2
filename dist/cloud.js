@@ -34,7 +34,7 @@ window.OrbitaCloud = (() => {
   function unlock(){if(release){release();release=null;}}
   async function sendStored(run){
     // A lost start response is retried with the same ID before final delivery.
-    if(!run.started){await api('start',{runId:run.runId});run.started=true;persist(run);}
+    if(!run.started){await api('start',{runId:run.runId,rulesVersion:run.rulesVersion||'runner-1'});run.started=true;persist(run);}
     const result=await api('finish',{runId:run.runId,...run.result});
     if(!result.saved||result.runId!==run.runId)throw new Error('Сервер не подтвердил запись полёта.');
     // Delete only after a matching receipt. A lost receipt is safe to retry.
@@ -56,9 +56,9 @@ window.OrbitaCloud = (() => {
     busy=true;
     try{
       await lock();const saved=read();if(saved)await sendStored(saved);
-      const run={runId:crypto.randomUUID(),started:false,result:{distance:0,coins:0,durationMs:0}};
+      const run={runId:crypto.randomUUID(),rulesVersion:'runner-2',started:false,result:{distance:0,coins:0,durationMs:0}};
       persist(run);emit('Регистрируем полёт…');
-      const ack=await api('start',{runId:run.runId});
+      const ack=await api('start',{runId:run.runId,rulesVersion:run.rulesVersion||'runner-1'});
       if(ack.runId!==run.runId)throw new Error('Не удалось подтвердить начало полёта.');
       run.started=true;run.expiresAt=ack.expiresAt;persist(run);active=run;emit('Полёт зарегистрирован.');
     }catch(error){unlock();emit(error.message);throw error;}
