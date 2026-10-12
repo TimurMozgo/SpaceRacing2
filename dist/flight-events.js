@@ -7,34 +7,59 @@ const FlightEvents=(()=>{
     const e=g.event||(g.event=create());
     if(!e.type){e.next-=dt;if(e.next>0)return false;
       e.type=e.previous==='meteor'?'cargo':e.previous==='cargo'?'meteor':Math.random()<.5?'meteor':'cargo';
-      e.age=0;e.wave=0;e.lane=e.type==='meteor'?0:(Math.random()<.5?-.58:.58);sound('bonus');
+      e.age=0;e.wave=0;e.lane=Math.random()<.5?-.58:.58;
+      if(e.type==='meteor'){e.routes=[-.6,0,.6];for(let i=2;i>0;i--){const j=Math.floor(Math.random()*(i+1));[e.routes[i],e.routes[j]]=[e.routes[j],e.routes[i]];}e.round=0;e.lane=e.routes[0];e.phase='warning';e.timer=3.5;}sound('bonus');
     }
     e.age+=dt;
+    if(e.type==='meteor'){
+      if(e.phase==='warning'){
+        e.timer-=dt;
+        if(e.timer<=0){
+          for(const x of [-.84,-.6,-.36,-.12,.12,.36,.6,.84])if(Math.abs(x-e.lane)>.31)
+            g.objects.push({kind:'rock',eventMeteor:true,x,z:.02,rot:rand(0,6),seed:rand(0,50)});
+          e.phase='flying';
+        }
+      }else if(!g.objects.some(o=>o.eventMeteor&&!o.dead&&o.z<=1.12)){
+        e.round++;
+        if(e.round>=3){e.previous=e.type;e.type=null;e.next=rand(35,55);g.spawn=.7;return false;}
+        e.lane=e.routes[e.round];e.phase='warning';e.timer=1.25;sound('bonus');
+      }
+      return true;
+    }
     if(e.age>=15){e.previous=e.type;e.type=null;e.next=rand(35,55);g.spawn=.7;return false;}
     if(e.age>=3&&e.age<11){
       e.wave-=dt;
       if(e.wave<=0){
-        e.wave=e.type==='meteor'?.7:.65;
-        if(e.type==='meteor'){
-          // Keep one fixed, wide corridor clear for the whole storm.
-          for(const x of [-.78,-.48,.48,.78])if(Math.abs(x-e.lane)>.45)
-            g.objects.push({kind:'rock',eventMeteor:true,x:x+rand(-.035,.035),z:.02,rot:rand(0,6),seed:rand(0,50)});
-        }else{
-          g.objects.push({kind:'coin',x:e.lane+Math.sin(e.age*1.2)*.12,z:.22,rot:0});
-        }
+        e.wave=.65;
+        g.objects.push({kind:'coin',x:e.lane+Math.sin(e.age*1.2)*.12,z:.22,rot:0});
       }
     }
     return true; // Replace normal waves; do not stack two obstacle streams.
   }
   function label(g){
     const e=g.event;if(!e?.type)return '';
-    const warning=e.age<3;
-    if(e.age>=11)return e.type==='meteor'?'БУРЯ СТИХАЕТ':'ГРУЗ ДОСТАВЛЕН';
-    return e.type==='meteor'?(warning?'МЕТЕОРИТНЫЙ ДОЖДЬ ЧЕРЕЗ '+Math.ceil(3-e.age)+' С':'МЕТЕОРИТНЫЙ ДОЖДЬ')+' · ДЕРЖИСЬ '+'ПО ЦЕНТРУ':(warning?'ПРИБЛИЖАЕТСЯ ГРУЗОВОЙ КОРАБЛЬ':'ГРУЗОВОЙ КОРАБЛЬ · СОБИРАЙ МОНЕТЫ');
+    if(e.type==='meteor'){
+      const direction=e.lane<0?'СЛЕВА':e.lane>0?'СПРАВА':'ПО ЦЕНТРУ';
+      return 'МЕТЕОРИТЫ · ВОЛНА '+(e.round+1)+'/3 · ПРОХОД '+direction+(e.phase==='warning'?' · '+Math.ceil(e.timer)+' С':'');
+    }
+    if(e.age>=11)return 'ГРУЗ ДОСТАВЛЕН';
+    return e.age<3?'ПРИБЛИЖАЕТСЯ ГРУЗОВОЙ КОРАБЛЬ':'ГРУЗОВОЙ КОРАБЛЬ · СОБИРАЙ МОНЕТЫ';
   }
+
   function draw(ctx,w,h,g){
-    const e=g.event;if(!e?.type||e.age<3||e.age>=12)return;
-    if(e.type==='meteor')return;
+    const e=g.event;if(!e?.type)return;
+    if(e.type==='meteor'){
+      if(e.phase!=='warning')return;
+      ctx.save();
+      const half=Math.min(w,760)*.48;
+      for(const lane of [-.6,0,.6]){
+        const safe=lane===e.lane;
+        ctx.fillStyle=safe?'#8ef0cc18':'#ff945d18';ctx.strokeStyle=safe?'#8ef0cc88':'#ff945d44';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(w/2+(lane-.28)*half*.12,h*.12);ctx.lineTo(w/2+(lane+.28)*half*.12,h*.12);ctx.lineTo(w/2+(lane+.28)*half,h*.9);ctx.lineTo(w/2+(lane-.28)*half,h*.9);ctx.closePath();ctx.fill();ctx.stroke();
+      }
+      ctx.restore();return;
+    }
+    if(e.age<3||e.age>=12)return;
     const a=Math.min(1,(e.age-3)/1.2,(12-e.age)/1.2);
     ctx.save();ctx.globalAlpha=Math.max(0,a);ctx.translate(w/2+(e.lane+Math.sin(e.age*1.2)*.12)*Math.min(w,760)*.16,h*.16);
     const scale=Math.min(1,w/430)*1.4;ctx.scale(scale,scale);
