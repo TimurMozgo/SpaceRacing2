@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="440" viewBox="0 0 260 220">
+<defs>
+ <linearGradient id="h" x2=".8" y2="1"><stop stop-color="#d9e5ed"/><stop offset=".35" stop-color="#829aaf"/><stop offset=".55" stop-color="#425b73"/><stop offset="1" stop-color="#1c2b40"/></linearGradient>
+ <linearGradient id="c" x2="1" y2="1"><stop stop-color="#ffdfa0"/><stop offset=".35" stop-color="#d8a854"/><stop offset="1" stop-color="#765022"/></linearGradient>
+ <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#e2ffff"/><stop offset=".35" stop-color="#66d9f3"/><stop offset="1" stop-color="#124962"/></linearGradient>
+ <linearGradient id="spine"><stop stop-color="#33495f"/><stop offset=".48" stop-color="#b3c5d3"/><stop offset=".52" stop-color="#6d849a"/><stop offset="1" stop-color="#22354a"/></linearGradient>
+</defs>
+<!-- Silhouette, swept wings and layered armour. No runtime SVG filters. -->
+<path d="M130 12 152 53 166 76 205 96 241 171 209 184 162 166 155 193 105 193 98 166 51 184 19 171 55 96 94 76 108 53Z" fill="#101d2d" stroke="#0a1524" stroke-width="5"/>
+<path d="m95 82-34 24-31 61 23 5 47-24m65-66 34 24 31 61-23 5-47-24" fill="url(#h)" stroke="#a4b9c9" stroke-width="1.5"/>
+<path d="m61 118-16 39 39-13 11-43m104 17 16 39-39-13-11-43" fill="#22394f" stroke="#67879d"/>
+<path d="m45 166 42-14m128 14-42-14" stroke="#efbe60" stroke-width="4"/>
+<g fill="url(#h)" stroke="#b2c8d4" stroke-width="1.3">
+ <path d="M51 109 69 98 84 113 84 196 50 196Z"/><path d="M176 113 191 98 209 109 210 196 176 196Z"/>
+</g>
+<g fill="#17293d" stroke="#57788d"><path d="M57 121h20v58H57zM183 121h20v58h-20z"/></g>
+<path d="M57 130h20m-20 8h20m-20 8h20m-20 8h20m-20 8h20m106-32h20m-20 8h20m-20 8h20m-20 8h20m-20 8h20" stroke="#7892a5" stroke-width="2"/>
+<path d="M50 192h34v10H50zm126 0h34v10h-34z" fill="#122134" stroke="#6fbad1"/>
+<path d="M55 199h24m102 0h24" stroke="#b8f9ff" stroke-width="4"/>
+<path d="M130 17 148 58 154 162 143 190 117 190 106 162 112 58Z" fill="url(#spine)" stroke="#a1b9c9"/>
+<path d="m130 31 11 31-11 8-11-8Z" fill="url(#glass)" stroke="#bbf9ff"/>
+<g fill="url(#c)" stroke="#f1d295" stroke-width="1">
+ <path d="m85 80 22-9v39H82V88Zm70-9 20 9 3 8v22h-25Z"/>
+ <path d="M82 115h25v36H82zm71 0h25v36h-25Z"/>
+ <path d="M84 156h23v24H89l-5-7zm69 0h23v17l-5 7h-18Z"/>
+</g>
+<g stroke="#76552b" stroke-width="3"><path d="M89 83v21m11-25v25m61-25v25m10-21v21M89 121v24m11-24v24m61-24v24m10-24v24M93 160v15m69-15v15"/></g>
+<path d="M119 82h22v61h-22z" fill="#23374b" stroke="#617d92"/>
+<path d="M124 89h12m-12 8h12m-12 8h12" stroke="#8aa6b9" stroke-width="2"/>
+<path d="M123 150h14v18h-14z" fill="url(#glass)"/>
+<circle cx="35" cy="163" r="2.5" fill="#ff9b82"/><circle cx="225" cy="163" r="2.5" fill="#87ffd1"/>
+<text x="130" y="132" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" fill="#d6e3ed">SR-07</text>
+</svg>
