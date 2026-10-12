@@ -7,7 +7,7 @@ const SpaceFlight=(()=>{
   const maxTime=Math.log(2.5)/.009;
   function distance(t){return t<=maxTime?60/.009*Math.expm1(.009*t):10000+150*(t-maxTime);}
   function speed(d){return Math.min(2.5,1+d*.00015);}
-  function scene(d){const sector=Math.floor(Math.max(0,d)/1000),part=Math.min(1,(d-sector*1000)/180);return {sector,current:sector%6,previous:(sector+5)%6,mix:sector===0?1:part*part*(3-2*part)};}
+  function scene(d){const sector=Math.floor(Math.max(0,d)/1000),part=Math.min(1,(d-sector*1000)/900);return {sector,current:sector%6,previous:(sector+5)%6,mix:sector===0?1:part*part*(3-2*part)};}
   let shade=null,lastW=0,lastH=0;
   function draw(ctx,w,h,g){
     ctx.fillStyle='#03060d';ctx.fillRect(0,0,w,h);
