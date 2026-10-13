@@ -36,7 +36,7 @@ function sound(kind){
   const play=()=>{
     if(!data.sound||document.hidden||a.state!=='running')return;
     try{
-      const tones={click:[680,1040,.12,.14,'triangle'],coin:[1100,1600,.09,.075,'sine'],bonus:[420,1200,.3,.12,'sine'],hit:[150,35,.35,.13,'sawtooth'],shoot:[1150,130,.095,.16,'triangle'],start:[150,650,.55,.1,'sine'],buy:[500,1500,.6,.1,'sine']};
+      const tones={click:[680,1040,.12,.14,'triangle'],coin:[1100,1600,.09,.075,'sine'],bonus:[420,1200,.3,.12,'sine'],hit:[150,35,.35,.13,'sawtooth'],shoot:[1150,130,.095,.16,'triangle'],break:[260,65,.2,.14,'triangle'],start:[150,650,.55,.1,'sine'],buy:[500,1500,.6,.1,'sine']};
       const [from,to,duration,volume,wave]=tones[kind]||tones.click;
       const o=a.createOscillator(),gain=a.createGain(),t=a.currentTime;
       o.type=wave;o.frequency.setValueAtTime(from,t);o.frequency.exponentialRampToValueAtTime(to,t+duration);
@@ -50,18 +50,25 @@ function sound(kind){
 }
 
 // Quiet generated ambient score: three sustained voices, no audio downloads.
-let ambientBus=null,ambientVoices=[],ambientChord=-1;
+let ambientBus=null,ambientVoices=[],ambientChord=-1,ambientPlaying=false,melodyVoice=null,melodyGain=null,melodyStep=-1;
 function ambientMusic(){
  const playing=typeof g!=='undefined'&&g?.running&&!g.paused&&data.sound&&!document.hidden;
- if(!playing){if(ambientBus&&audio?.state==='running')ambientBus.gain.setTargetAtTime(0,audio.currentTime,.25);return;}
+ if(!playing){if(ambientBus&&ambientPlaying){ambientBus.gain.setTargetAtTime(0,audio.currentTime,.15);melodyGain.gain.cancelScheduledValues(audio.currentTime);melodyGain.gain.setTargetAtTime(0,audio.currentTime,.1);}ambientPlaying=false;return;}
  const a=prepareAudio();if(!a||a.state!=='running')return;
  if(!ambientBus){
   ambientBus=a.createGain();ambientBus.gain.value=0;ambientBus.connect(master);
-  ambientVoices=[0,1,2].map(()=>{const voice=a.createOscillator();voice.type='sine';voice.connect(ambientBus);voice.start();return voice;});
+  melodyGain=a.createGain();melodyGain.gain.value=0;melodyGain.connect(master);melodyVoice=a.createOscillator();melodyVoice.type='sine';melodyVoice.connect(melodyGain);melodyVoice.start();
+  ambientVoices=[0,1,2].map(()=>{const voice=a.createOscillator();voice.type='triangle';voice.connect(ambientBus);voice.start();return voice;});
  }
- const chords=[[130.81,196,246.94],[110,164.81,220],[87.31,174.61,261.63],[98,146.83,246.94]],index=Math.floor(g.t/12)%4;
+ const chords=[[261.63,329.63,392],[220,261.63,329.63],[174.61,261.63,349.23],[196,293.66,392]],index=Math.floor(g.t/12)%4;
  if(index!==ambientChord){ambientVoices.forEach((v,i)=>v.frequency.setTargetAtTime(chords[index][i],a.currentTime,1.8));ambientChord=index;}
- ambientBus.gain.setTargetAtTime(.025,a.currentTime,.8);
+ if(!ambientPlaying){ambientBus.gain.setTargetAtTime(.065,a.currentTime,.6);ambientPlaying=true;melodyStep=-1;}
+ const step=Math.floor(g.t/2.5);
+ if(step!==melodyStep){
+  melodyStep=step;const notes=[523.25,659.25,587.33,392,440,523.25,659.25,587.33,523.25,349.23,440,523.25,392,587.33,493.88,392];
+  const now=a.currentTime;melodyVoice.frequency.setTargetAtTime(notes[step%notes.length],now,.06);
+  melodyGain.gain.cancelScheduledValues(now);melodyGain.gain.setValueAtTime(0,now);melodyGain.gain.linearRampToValueAtTime(.11,now+.12);melodyGain.gain.exponentialRampToValueAtTime(.001,now+2.2);
+ }
 }
 
 function render(){ $('#launchShipName').textContent=SHIPS[data.selected].name;renderBonusUpgrades();$('#balance').textContent=fmt(data.balance);$('#record').textContent=fmt(data.best)+' м';$('#activeName').textContent=SHIPS[data.selected].name;$('#activeNumber').textContent=String(data.selected+1).padStart(2,'0');$('.ship-label small').textContent=SHIPS[data.selected].type.toUpperCase();$('#heroShip').innerHTML=shipSVG(data.selected);$('.ship-label').style.color=SHIPS[data.selected].color;$('#ownedCount').textContent=`${String(SHIPS.filter((_,i)=>ownsShip(i)).length).padStart(2,'0')} / ${SHIPS.length} кораблей`;$('#sound').textContent=data.sound?'🔊':'🔇';$('#sound').setAttribute('aria-label',data.sound?'Выключить звук':'Включить звук');$('#sound').setAttribute('aria-pressed',data.sound);
@@ -139,7 +146,7 @@ $('#stars').onclick=async()=>{
 const canvas=$('#space'),ctx=canvas.getContext('2d',{alpha:false});let W=0,H=0,dpr=1,g=null,last=0,raf=0;const keys=new Set();let pointer=false;
 function resize(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,1.5);canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}window.addEventListener('resize',resize);resize();
 let starting=false;
-async function start(){if(starting||g?.running||starsBusy)return;starting=true;const launchButtons=[...$$('.launch'),$('#retry')].filter(Boolean);const launchLabels=launchButtons.map(b=>b.innerHTML);launchButtons.forEach(b=>{b.disabled=true;b.textContent='Подготовка полёта…';});try{await OrbitaCloud.begin();}catch(error){toast(error.message);return;}finally{starting=false;launchButtons.forEach((b,i)=>{b.disabled=false;b.innerHTML=launchLabels[i];});}if(modal.open){modalClose=()=>{};modal.close()}g={gun:gunLevel(),event:FlightEvents.create(),bonusDurations:{magnet:bonusSeconds('magnet'),double:bonusSeconds('double')},running:true,paused:false,t:0,dist:0,coins:0,x:0,target:0,shield:false,magnet:0,double:0,invuln:0,spawn:0,bonus:5,shot:0,objects:[],bullets:[],particles:[],stars:Array.from({length:100},()=>({x:Math.random(),y:Math.random(),z:Math.random()})),hue:220};$('#flightEvent').classList.remove('visible');$('#launchDock').classList.add('hidden');$('#game').classList.remove('hidden');document.body.style.overflow='hidden';$('#flightHint').style.opacity=1;keys.clear();pointer=false;sound('start');last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)}$$('.launch').forEach(b=>b.onclick=start);
+async function start(){if(starting||g?.running||starsBusy)return;unlockAudio();starting=true;const launchButtons=[...$$('.launch'),$('#retry')].filter(Boolean);const launchLabels=launchButtons.map(b=>b.innerHTML);launchButtons.forEach(b=>{b.disabled=true;b.textContent='Подготовка полёта…';});try{await OrbitaCloud.begin();}catch(error){toast(error.message);return;}finally{starting=false;launchButtons.forEach((b,i)=>{b.disabled=false;b.innerHTML=launchLabels[i];});}if(modal.open){modalClose=()=>{};modal.close()}g={gun:gunLevel(),event:FlightEvents.create(),bonusDurations:{magnet:bonusSeconds('magnet'),double:bonusSeconds('double')},running:true,paused:false,t:0,dist:0,coins:0,x:0,target:0,shield:false,magnet:0,double:0,invuln:0,spawn:0,bonus:5,shot:0,objects:[],bullets:[],particles:[],stars:Array.from({length:100},()=>({x:Math.random(),y:Math.random(),z:Math.random()})),hue:220};$('#flightEvent').classList.remove('visible');$('#launchDock').classList.add('hidden');$('#game').classList.remove('hidden');document.body.style.overflow='hidden';$('#flightHint').style.opacity=1;keys.clear();pointer=false;sound('start');last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)}$$('.launch').forEach(b=>b.onclick=start);
 function pause(){if(!g?.running||g.paused)return;g.paused=true;ambientMusic();keys.clear();showModal('<span class="kicker">ПОЛЁТ ПРИОСТАНОВЛЕН</span><h2>Вселенная подождёт.</h2><p>Таймеры бонусов на паузе.</p><button class="primary" id="resume">Продолжить ↗</button><button class="text-btn" id="endFlight">Завершить и сохранить полёт</button>',resume);$('#resume').onclick=closeModal;$('#endFlight').onclick=()=>{modalClose=()=>{};modal.close();finish()}}
 function resume(){if(g?.running){g.paused=false;last=performance.now()}}$('#pause').onclick=pause;document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});window.addEventListener('blur',pause);
 function finish(){if(!g?.running)return;g.running=false;ambientMusic();OrbitaCloud.finish(g.dist,g.coins,g.t*1000);const distance=Math.floor(g.dist);data.balance+=g.coins;data.totalCoins+=g.coins;data.totalDistance+=distance;data.flights++;const record=distance>data.best;data.best=Math.max(data.best,distance);data.history.unshift({date:Date.now(),distance,coins:g.coins});data.history=data.history.slice(0,30);save();render();sound('hit');showModal(`<span class="kicker">${record?'НОВЫЙ ЛИЧНЫЙ РЕКОРД':'ПОЛЁТ ЗАВЕРШЁН'}</span><h2>${record?'Выше. Дальше. Смелее.':'Звёзды ждут возвращения.'}</h2><div class="result-stats"><div><b>${fmt(distance)} м</b><small>Дистанция</small></div><div><b>+${fmt(g.coins)} ◉</b><small>Собрано за полёт</small></div></div><p id="flightSaveStatus" role="status">Результат ожидает подтверждения сервера…</p><button class="primary" id="retry">Ещё один полёт ↗</button><button class="text-btn" id="home">Вернуться в ангар</button>`,leave);$('#retry').onclick=start;$('#home').onclick=closeModal}
@@ -147,6 +154,15 @@ function leave(){cancelAnimationFrame(raf);$('#game').classList.add('hidden');$(
 document.addEventListener('keydown',e=>{if(!g?.running)return;if(['ArrowLeft','ArrowRight','KeyA','KeyD','Escape','Space'].includes(e.code)){e.preventDefault();if(e.code==='Escape'||e.code==='Space'){if(g.paused)closeModal();else pause()}else keys.add(e.code)}});document.addEventListener('keyup',e=>keys.delete(e.code));
 canvas.addEventListener('pointerdown',e=>{pointer=true;canvas.setPointerCapture(e.pointerId);move(e)});canvas.addEventListener('pointermove',e=>{if(pointer)move(e)});canvas.addEventListener('pointerup',()=>pointer=false);canvas.addEventListener('pointercancel',()=>pointer=false);function move(e){if(g&&!g.paused)g.target=Math.max(-.88,Math.min(.88,(e.clientX-W/2)/(Math.min(W,760)*.45)))}
 const rand=(a,b)=>a+Math.random()*(b-a);function burst(x,y,color,n=10){for(let i=0;i<n&&g.particles.length<100;i++)g.particles.push({x,y,vx:rand(-100,100),vy:rand(-100,100),life:.5,color})}
+function shatterRock(o){
+ const p=project(o);burst(p.x,p.y,'#dfedf1',5);
+ for(let i=0;i<6&&g.particles.length<100;i++){
+  const a=i*Math.PI/3+rand(-.2,.2),velocity=rand(35,85)*(p.r/31);
+  g.particles.push({x:p.x,y:p.y,vx:Math.cos(a)*velocity,vy:Math.sin(a)*velocity,life:.65,maxLife:.65,rock:true,size:Math.max(2,p.r*rand(.13,.24)),angle:rand(0,6),spin:rand(-5,5),color:i%2?'#586d7b':'#9caeb6'});
+ }
+ if(g.particles.length<100)g.particles.push({x:p.x,y:p.y,vx:0,vy:0,life:.16,maxLife:.16,flash:true,size:p.r});
+ if(!g.lastBreakSound||g.t-g.lastBreakSound>.09){sound('break');g.lastBreakSound=g.t;}
+}
 function project(o){const depth=.12+.88*o.z;return{x:W/2+o.x*Math.min(W,760)*.48*depth,y:H*.12+o.z*o.z*H*.73,r:(o.kind==='rock'?31:16)*depth}}
 function collect(o){if(o.kind==='coin'){g.coins+=g.double>0?2:1;sound('coin')}else if(o.kind==='shield'){g.shield=true;sound('bonus')}else if(o.kind==='magnet'){g.magnet=g.bonusDurations?.magnet||bonusSeconds('magnet');sound('bonus')}else if(o.kind==='double'){g.double=g.bonusDurations?.double||bonusSeconds('double');sound('bonus')}o.dead=true;const p=project(o);burst(p.x,p.y,o.kind==='coin'?'#ffdb7e':'#a6f3ff')}
 function update(dt){g.t+=dt;g.dist=SpaceFlight.distance(g.t);const speed=SpaceFlight.speed(g.dist);g.magnet=Math.max(0,g.magnet-dt);g.double=Math.max(0,g.double-dt);g.invuln=Math.max(0,g.invuln-dt);if(keys.has('ArrowLeft')||keys.has('KeyA'))g.target-=dt*1.8;if(keys.has('ArrowRight')||keys.has('KeyD'))g.target+=dt*1.8;g.target=Math.max(-.88,Math.min(.88,g.target));g.x+=(g.target-g.x)*(1-Math.exp(-12*dt));g.spawn-=dt;g.bonus-=dt;g.shot-=dt;
@@ -156,9 +172,9 @@ if(g.bonus<=0){g.bonus=rand(7,10);g.objects.push({kind:['shield','magnet','doubl
 if(g.gun&&g.shot<=0){g.shot=[0,1,.4,.2][g.gun];g.bullets.push({x:g.x,z:1});sound('shoot')}
 for(const b of g.bullets)b.z-=dt*1.8;
 for(const o of g.objects){if(o.dead)continue;o.z+=dt*.25*speed;o.rot+=dt*.3;if(o.kind==='coin'&&g.magnet>0&&o.z>=0){o.x+=(g.x-o.x)*(1-Math.exp(-dt*6));o.z+=dt*1.7;if(o.z>=.98)collect(o)}
-if(o.kind==='rock'){for(const b of g.bullets){if(!b.dead&&Math.abs(b.z-o.z)<.08&&Math.abs(b.x-o.x)<.13){b.dead=true;o.dead=true;const p=project(o);burst(p.x,p.y,'#9caebe',12);break}}}
+if(o.kind==='rock'){for(const b of g.bullets){if(!b.dead&&Math.abs(b.z-o.z)<.08&&Math.abs(b.x-o.x)<.13){b.dead=true;o.dead=true;shatterRock(o);break}}}
 if(!o.dead&&o.z>=.93&&o.z<=1.1&&Math.abs(o.x-g.x)<(o.kind==='rock'?.16:.19)){if(o.kind==='rock'){if(g.invuln>0){o.dead=true;continue}if(g.shield){g.shield=false;g.invuln=1.4;o.dead=true;burst(W/2+g.x*Math.min(W,760)*.48,H*.85,'#91eeff',25);sound('hit')}else{finish();return}}else collect(o)}}
-g.objects=g.objects.filter(o=>!o.dead&&o.z<1.18);g.bullets=g.bullets.filter(b=>!b.dead&&b.z>0);for(const p of g.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt}g.particles=g.particles.filter(p=>p.life>0);for(const s of g.stars){s.y+=dt*(s.z<.55?.018:s.z<.88?.075:.23)*speed;if(s.y>1){s.y=0;s.x=Math.random()}}
+g.objects=g.objects.filter(o=>!o.dead&&o.z<1.18);g.bullets=g.bullets.filter(b=>!b.dead&&b.z>0);for(const p of g.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.rock){p.angle+=p.spin*dt;p.vy+=30*dt;}}g.particles=g.particles.filter(p=>p.life>0);for(const s of g.stars){s.y+=dt*(s.z<.55?.018:s.z<.88?.075:.23)*speed;if(s.y>1){s.y=0;s.x=Math.random()}}
 if(Math.floor(g.t)!==g.checkpointSecond){g.checkpointSecond=Math.floor(g.t);try{OrbitaCloud.checkpoint(g.dist,g.coins,g.t*1000);}catch{pause();toast('Не удалось сохранить полёт на устройстве. Освободи место перед продолжением.');}}if(g.t>=21000||(OrbitaCloud.expiresAt&&Date.now()>=Date.parse(OrbitaCloud.expiresAt)-3000)){finish();return;}
 const eventBanner=$('#flightEvent');const eventLabel=FlightEvents.label(g);if(eventBanner.textContent!==eventLabel)eventBanner.textContent=eventLabel;eventBanner.classList.toggle('visible',!!g.event?.type);eventBanner.dataset.kind=g.event?.type||'';
 $('#distance').textContent=fmt(g.dist)+' м';$('#coins').textContent=fmt(g.coins);$('#effects').innerHTML=(g.shield?'<span class="effect cyan">◇ Щит · 1 удар</span>':'')+(g.magnet>0?`<span class="effect purple">∩ ${Math.ceil(g.magnet)} с</span>`:'')+(g.double>0?`<span class="effect gold">×2 ${Math.ceil(g.double)} с</span>`:'');$('#flightHint').style.opacity=g.t<5?1:0;const sector=SpaceFlight.scene(g.dist);if(g.sector!==sector.sector){g.sector=sector.sector;$('#region').textContent=SpaceFlight.names[sector.current]+' · СЕКТОР '+String(sector.sector+1).padStart(2,'0');} }
@@ -173,7 +189,12 @@ for(const s of g.stars){
 ctx.strokeStyle='#86b7e409';for(let i=-4;i<=4;i++){ctx.beginPath();ctx.moveTo(W/2+i*12,H*.12);ctx.lineTo(W/2+i*Math.min(W,760)*.2,H);ctx.stroke()}
 for(const b of g.bullets){const p=project(b);ctx.strokeStyle='#c9ff90';ctx.lineWidth=2+2*b.z;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x,p.y+18*b.z);ctx.stroke()}
 for(const o of g.objects){if(o.z<0)continue;const p=project(o);ctx.save();ctx.translate(p.x,p.y);if(o.kind==='rock'){if(o.eventMeteor){const tail=ctx.createLinearGradient(0,-p.r*3,0,0);tail.addColorStop(0,'#ff994400');tail.addColorStop(1,'#ffb45c99');polygon([[-p.r*.6,0],[0,-p.r*3],[p.r*.6,0]],tail);}SpaceFlight.asteroid(ctx,p.r,o.seed,o.rot);}else{const color={coin:'#ffda76',shield:'#94eaff',magnet:'#cba4ff',double:'#ffce70'}[o.kind];ctx.fillStyle=color+'22';ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,p.r,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.font=`bold ${Math.max(8,p.r)}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText({coin:'◈',shield:'◇',magnet:'∩',double:'×2'}[o.kind],0,1)}ctx.restore()}
-const px=W/2+g.x*Math.min(W,760)*.48,py=H*.85,scale=Math.min(1,W/430);ctx.save();ctx.translate(px,py);ctx.scale(scale,scale);ctx.rotate((g.target-g.x)*.6);if(g.invuln>0)ctx.globalAlpha=.5+.5*Math.sin(g.t*30);const flame=ctx.createLinearGradient(0,10,0,80);flame.addColorStop(0,'#e7ffff');flame.addColorStop(.4,SHIPS[data.selected].color);flame.addColorStop(1,'transparent');polygon([[-10,16],[0,65+Math.sin(g.t*35)*10],[10,16]],flame);PilotShip3D.draw(ctx,(g.target-g.x)*2.4,g.t,data.selected);ctx.globalAlpha=1;if(g.shield){ctx.beginPath();ctx.ellipse(0,0,49,56,0,0,7);ctx.strokeStyle='#91e9ff';ctx.fillStyle='#9aeeff10';ctx.lineWidth=2;ctx.fill();ctx.stroke()}ctx.restore();for(const p of g.particles){ctx.globalAlpha=p.life*2;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3)}ctx.globalAlpha=1;}
+const px=W/2+g.x*Math.min(W,760)*.48,py=H*.85,scale=Math.min(1,W/430);ctx.save();ctx.translate(px,py);ctx.scale(scale,scale);ctx.rotate((g.target-g.x)*.6);if(g.invuln>0)ctx.globalAlpha=.5+.5*Math.sin(g.t*30);const flame=ctx.createLinearGradient(0,10,0,80);flame.addColorStop(0,'#e7ffff');flame.addColorStop(.4,SHIPS[data.selected].color);flame.addColorStop(1,'transparent');polygon([[-10,16],[0,65+Math.sin(g.t*35)*10],[10,16]],flame);PilotShip3D.draw(ctx,(g.target-g.x)*2.4,g.t,data.selected);ctx.globalAlpha=1;if(g.shield){ctx.beginPath();ctx.ellipse(0,0,49,56,0,0,7);ctx.strokeStyle='#91e9ff';ctx.fillStyle='#9aeeff10';ctx.lineWidth=2;ctx.fill();ctx.stroke()}ctx.restore();for(const p of g.particles){
+ ctx.globalAlpha=Math.min(1,p.life/(p.maxLife||.5));
+ if(p.flash){ctx.strokeStyle='#e2f6ff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,p.size*(1.5-p.life/p.maxLife),0,Math.PI*2);ctx.stroke();}
+ else if(p.rock){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);polygon([[-p.size,-p.size*.4],[p.size*.2,-p.size],[p.size,p.size*.3],[-p.size*.4,p.size]],p.color);ctx.restore();}
+ else{ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3);}
+}ctx.globalAlpha=1;}
 function frame(now){if(!g)return;const dt=Math.min((now-last)/1000,.04);last=now;if(g.running&&!g.paused)update(dt);if(g)draw();ambientMusic();if(g?.running)raf=requestAnimationFrame(frame)}
 try{const tg=window.Telegram?.WebApp;if(tg?.initData){tg.ready();tg.expand();tg.setHeaderColor('#080c15');tg.setBackgroundColor('#080c15');const user=tg.initDataUnsafe?.user;if(user?.first_name)$('#pilotName').textContent=user.first_name}}catch{}render();
 
