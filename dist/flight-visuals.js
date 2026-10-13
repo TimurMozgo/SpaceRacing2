@@ -2,6 +2,8 @@
 // One shared 2.1 MB atlas; draw source rectangles directly, with no per-frame canvases.
 const SpaceFlight=(()=>{
   const art=new Image();art.decoding='async';art.src='assets/space-sectors.png';
+  const rocks=Array.from({length:6},(_,i)=>{const image=new Image();image.decoding='async';image.src='assets/asteroid-'+i+'.svg';return image;});
+  function asteroid(ctx,r,seed,rotation){const art=rocks[Math.abs(Math.floor(seed||0))%rocks.length];ctx.save();ctx.rotate(rotation);if(art.complete&&art.naturalWidth){ctx.drawImage(art,-r*1.12,-r*1.12,r*2.24,r*2.24);}else{ctx.fillStyle='#677985';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();}ctx.restore();}
   const names=['ДАЛЬНИЙ КОСМОС','ГОЛУБАЯ ПЛАНЕТА','ФИОЛЕТОВЫЙ РАЗЛОМ','БИРЮЗОВАЯ ТУМАННОСТЬ','ЗОЛОТАЯ ГАЛАКТИКА','ОГНЕННОЕ ЗАТМЕНИЕ'];
   const bounds=[[10,266],[288,262],[565,265],[845,261],[1121,262],[1399,261]];
   const maxTime=Math.log(2.5)/.009;
@@ -25,5 +27,5 @@ const SpaceFlight=(()=>{
     }
     ctx.fillStyle=shade;ctx.fillRect(0,0,w,h);
   }
-  return {distance,speed,scene,draw,names};
+  return {distance,speed,scene,draw,names,asteroid};
 })();
