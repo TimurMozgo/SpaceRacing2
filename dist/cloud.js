@@ -6,7 +6,7 @@ window.OrbitaCloud = (() => {
   const identity=tg?.initDataUnsafe?.user?.id;
   const enabled=!!(tg?.initData && Number.isSafeInteger(identity));
   const key='orbita-run-v1-'+identity;
-  let pendingSave=null;
+  let pendingSave=null,contest=null,rankingRows=[],serverOffset=0;
   let active=null, busy=false, release=null, profile=null, status=enabled?'Подключаем бортовой журнал…':'Для общего рейтинга открой игру кнопкой в Telegram.';
   function emit(message){if(message)status=message;window.dispatchEvent(new Event('orbita-cloud'));}
   function read(){const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null;}
@@ -39,10 +39,10 @@ window.OrbitaCloud = (() => {
     const result=await api('finish',{runId:run.runId,...run.result});
     if(!result.saved||result.runId!==run.runId)throw new Error('Сервер не подтвердил запись полёта.');
     // Delete only after a matching receipt. A lost receipt is safe to retry.
-    localStorage.removeItem(key);emit('Полёт записан в таблицу.');
+    localStorage.removeItem(key);emit(result.training?'Тренировочный полёт сохранён. В конкурс не засчитан.':'Полёт записан в таблицу.');
   }
   async function refresh(sort='distance'){
-    const result=await api('leaderboard',{sort});profile=result.profile;emit();return result;
+    const result=await api('leaderboard',{sort});profile=result.profile;contest=result.season;rankingRows=result.rows||[];serverOffset=Date.parse(result.updatedAt||new Date().toISOString())-Date.now();emit();return result;
   }
   function retry(){
     if(!enabled||active||busy)return pendingSave||Promise.resolve();
@@ -89,5 +89,5 @@ window.OrbitaCloud = (() => {
   window.addEventListener('online',()=>retry());
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)retry();});
   setInterval(()=>{if(enabled&&!active&&!busy&&read())retry();},30000);
-  return {starsUpgradeInvoice:(type,level)=>api("starsInvoice",{productId:type+"_"+level,termsAccepted:true}),starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
+  return {adminRead:()=>api('adminRead'),adminCommand:fields=>api('adminCommand',fields),get contest(){return contest;},get rankingRows(){return rankingRows;},get serverNow(){return Date.now()+serverOffset;},starsUpgradeInvoice:(type,level)=>api("starsInvoice",{productId:type+"_"+level,termsAccepted:true}),starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
 })();
