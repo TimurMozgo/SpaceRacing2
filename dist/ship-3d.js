@@ -31,16 +31,20 @@ const PilotShip3D=(()=>{
   const tilt=.43+Math.sin(time*.8)*.025,c=Math.cos(tilt),s=Math.sin(tilt);
   return [xx,y*c-zz*s,y*s+zz*c];
  }
- function mesh(bank,time){return faces.map(f=>{
-  const v=f.points.map(p=>transform(p,bank,time));
+ function mesh(bank,time,index=0){
+ const palettes=[[137,163,185],[126,192,115],[67,195,174],[76,163,220],[132,133,226],[169,100,211],[222,115,162],[231,156,76],[98,208,223],[234,197,102]];
+ const widths=[1,.83,1.12,1.25,1.05,.9,1.3,1.42,1.2,1.5],lengths=[1,1.2,1.04,.94,1.17,1.3,1.06,1.1,1.3,1.22];
+ index=Math.max(0,Math.min(9,index));
+ return faces.map(f=>{
+  const v=f.points.map(([x,y,z])=>transform([x*widths[index],y*lengths[index]+(Math.abs(x)>24?index*1.4:0),z*(1+index*.04)],bank,time));
   const a=v[0],b=v[1],c=v[2],u=b.map((n,i)=>n-a[i]),w=c.map((n,i)=>n-a[i]);
   const n=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]],len=Math.hypot(...n)||1;
   const light=.32+.68*Math.max(0,(-.45*n[0]-.4*n[1]+.8*n[2])/len);
-  return {points:v.map(([x,y,z])=>{const scale=240/(240-z);return [x*scale,y*scale];}),depth:v.reduce((n,p)=>n+p[2],0)/v.length,color:'rgb('+f.color.map(n=>Math.round(n*light)).join(',')+')'};
+  return {points:v.map(([x,y,z])=>{const scale=240/(240-z);return [x*scale,y*scale];}),depth:v.reduce((n,p)=>n+p[2],0)/v.length,color:'rgb('+(index&&f.color===metal?palettes[index]:f.color).map(n=>Math.round(n*light)).join(',')+')'};
  }).sort((a,b)=>a.depth-b.depth);}
- function draw(ctx,bank,time){
+ function draw(ctx,bank,time,index=0){
   ctx.save();ctx.lineJoin='round';ctx.lineWidth=.65;
-  for(const f of mesh(Math.max(-.65,Math.min(.65,bank)),time)){
+  for(const f of mesh(Math.max(-.65,Math.min(.65,bank)),time,index)){
    ctx.beginPath();f.points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.strokeStyle=f.color;ctx.fill();ctx.stroke();
   }
   ctx.restore();
