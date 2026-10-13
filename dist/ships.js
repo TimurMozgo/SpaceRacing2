@@ -26,6 +26,7 @@ const SHIP_WINGS=[
 ];
 let shipArtSerial=0;
 function shipSVG(i){
+ if(i===0)return '<img class="pioneer-model" src="assets/pioneer-3d.svg" alt="PIONEER — объёмный разведчик" width="180" height="200">';
  const s=SHIPS[i],c=s.color,id='ship-'+i+'-'+(++shipArtSerial),metal=i<2?'#a4aeb8':i<6?'#dce9f4':i<9?'#f2eafa':'#fff3cf';
  const left=`<path d="${SHIP_WINGS[i]}" fill="url(#${id}-metal)" stroke="#d1e4f5" stroke-opacity=".55" stroke-width="1"/>`;
  const panel=i>1?`<path d="M94 120 59 175 81 168Z" fill="#132337"/><path d="M89 131 61 174" stroke="${c}" stroke-width="${i>5?3:2}"/>`:'';
