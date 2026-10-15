@@ -60,26 +60,20 @@ async function syncStars(){
   try{return await starsSync;}finally{starsSync=null;}
 }
 async function showStarsPreview(index){
-  if(starsBusy)return;
-  if(!OrbitaCloud.enabled){toast('Покупки доступны при запуске игры через Telegram.');return;}
-  sound('click');starsBusy=true;
-  try{await syncStars();}catch(error){toast(error.message);return;}finally{starsBusy=false;}
   if(ownsShip(index)){toast('Корабль уже в твоём ангаре.');return;}
-  if(!starsReady){toast('Оплата Stars ещё настраивается. Покупки за монеты доступны.');return;}
-  const ship=SHIPS[index];
-  showModal(`<span class="kicker">TELEGRAM STARS</span><h2>Открыть корабль № ${String(index+1).padStart(2,'0')}?</h2><div class="stars-price">★ ${ship.starsPrice} <small>Stars</small></div><p>Покупка навсегда открывает один корабль этого класса для твоего Telegram-аккаунта. Внешность раскроется после оплаты. Монеты не списываются.</p><p>Помощь по оплатам и возвратам: <a href="https://t.me/${starsSupport.slice(1)}" target="_blank" rel="noopener">${starsSupport}</a>. Поддержку оказывает владелец SpaceRacing.</p><label style="display:block;margin:20px 0"><input type="checkbox" id="starsTerms"> Я прочитал и принимаю условия этой покупки.</label><button class="primary" id="starsPay" disabled>Оплатить ★ ${ship.starsPrice}</button><p id="starsPaymentStatus" role="status"></p>`);
-  $('#starsTerms').onchange=()=>{$('#starsPay').disabled=!$('#starsTerms').checked||starsBusy;};
-  $('#starsPay').onclick=()=>payWithStars(index);
+  return payWithStars(index);
 }
 async function payWithStars(index,upgrade=null){
-  if(starsBusy||!$('#starsTerms')?.checked)return;
+  if(starsBusy)return;
+  if(!OrbitaCloud.enabled){toast('Открой игру через Telegram.');return;}
   const tg=window.Telegram?.WebApp;
   if(!tg?.openInvoice){toast('Обнови Telegram для оплаты Stars.');return;}
-  starsBusy=true;$('#starsPay').disabled=true;
+  starsBusy=true;sound('click');toast('Открываем оплату Telegram…');
   try{
     const receipt=upgrade?await OrbitaCloud.starsUpgradeInvoice(upgrade.type,upgrade.level):await OrbitaCloud.starsInvoice(index);
     if(!/^https:\/\/t\.me\/\$[A-Za-z0-9_-]+$/.test(receipt.invoiceUrl))throw new Error('Не удалось проверить ссылку оплаты.');
-    closeModal();
+    if(modal.open)closeModal();
+    clearTimeout(toastTimer);$('#toast').classList.remove('show');
     tg.openInvoice(receipt.invoiceUrl,async status=>{
       starsBusy=false;
       if(status==='cancelled'){toast('Оплата отменена.');return;}
@@ -101,7 +95,7 @@ async function payWithStars(index,upgrade=null){
     });
   }catch(error){starsBusy=false;toast(error.message);const button=$('#starsPay');if(button)button.disabled=false;}
 }
-const modal=$('#modal');let modalClose=()=>{};function showModal(html,onClose=()=>{}){modalClose=onClose;$('#modalContent').innerHTML=html;if(!modal.open)modal.showModal()}function closeModal(){modal.close();const cb=modalClose;modalClose=()=>{};cb()}$('#closeModal').onclick=closeModal;modal.addEventListener('cancel',e=>{e.preventDefault();closeModal()});
+const modal=$('#modal');let modalClose=()=>{};function showModal(html,onClose=()=>{}){modalClose=onClose;const content=$('#modalContent');const replacing=modal.open;content.innerHTML=html;if(!modal.open)modal.showModal();if(replacing&&content.animate&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){content.getAnimations?.().forEach(a=>a.cancel());content.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'})}}function closeModal(){if(starting)return;modal.close();const cb=modalClose;modalClose=()=>{};cb()}$('#closeModal').onclick=closeModal;modal.addEventListener('cancel',e=>{e.preventDefault();closeModal()});
 const renderLocal=render;render=function(){renderLocal();window.dispatchEvent(new Event('orbita-cloud'));};
 function navigate(page){$$('.page').forEach(p=>p.classList.toggle('hidden',p.id!==page));$$('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'});sound('click');render()}
 $$('nav button').forEach(b=>b.onclick=()=>navigate(b.dataset.page));$('.brand').onclick=e=>{e.preventDefault();navigate('catalog')};$('#sound').onclick=()=>{data.sound=!data.sound;if(master)master.gain.setValueAtTime(data.sound?.7:0,audio.currentTime);save();render();sound('click')};
@@ -113,13 +107,9 @@ $('#upgrade').onclick=()=>{
  try{localStorage.setItem(progressKey,JSON.stringify(next));}catch{toast('Не удалось сохранить улучшение. Повтори позже.');return;}
  data=next;render();sound('buy');toast('Пулемёт улучшен.');
 };
-$('#stars').onclick=async()=>{
- if(starsBusy||gunLevel()>=3)return;if(!OrbitaCloud.enabled){toast('Открой игру через Telegram.');return;}
- starsBusy=true;try{await syncStars();}catch(error){toast(error.message);return;}finally{starsBusy=false;}
- const level=gunLevel()+1;if(level>3)return;if(!starsReady){toast('Оплата пока недоступна.');return;}
- showModal(`<span class="kicker">ПУЛЕМЁТ / TELEGRAM STARS</span><h2>Уровень ${level}</h2><p>${[1,2.5,5][level-1]} выстр. / сек. Постоянное улучшение для Telegram-аккаунта. Монеты не списываются.</p><p>Поддержка: <a href="https://t.me/${starsSupport.slice(1)}">${starsSupport}</a></p><label><input type="checkbox" id="starsTerms"> Принимаю условия покупки.</label><button class="primary" id="starsPay" disabled>Оплатить ★ ${level*50}</button>`);
- $('#starsTerms').onchange=()=>{$('#starsPay').disabled=!$('#starsTerms').checked||starsBusy;};
- $('#starsPay').onclick=()=>payWithStars(null,{type:'gun',level,name:'Пулемёт'});
+$('#stars').onclick=()=>{
+ if(starsBusy||gunLevel()>=3)return;
+ return payWithStars(null,{type:'gun',level:gunLevel()+1,name:'Пулемёт'});
 };
 const canvas=$('#space'),ctx=canvas.getContext('2d',{alpha:false});let W=0,H=0,dpr=1,g=null,last=0,raf=0;const keys=new Set();let pointer=false;
 function resize(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,1.5);canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}window.addEventListener('resize',resize);resize();
@@ -127,7 +117,7 @@ let starting=false;
 async function start(){if(starting||g?.running||starsBusy)return;unlockAudio();starting=true;const launchButtons=[...$$('.launch'),$('#retry')].filter(Boolean);const launchLabels=launchButtons.map(b=>b.innerHTML);launchButtons.forEach(b=>{b.disabled=true;b.textContent='Подготовка полёта…';});try{await OrbitaCloud.begin();}catch(error){toast(error.message);return;}finally{starting=false;launchButtons.forEach((b,i)=>{b.disabled=false;b.innerHTML=launchLabels[i];});}if(modal.open){modalClose=()=>{};modal.close()}g={gun:gunLevel(),event:FlightEvents.create(),bonusDurations:{magnet:bonusSeconds('magnet'),double:bonusSeconds('double')},running:true,paused:false,t:0,dist:0,coins:0,x:0,target:0,shield:false,magnet:0,double:0,invuln:0,spawn:0,bonus:5,shot:0,objects:[],bullets:[],particles:[],stars:Array.from({length:100},()=>({x:Math.random(),y:Math.random(),z:Math.random()})),hue:220};$('#flightEvent').classList.remove('visible');$('#launchDock').classList.add('hidden');$('#game').classList.remove('hidden');document.body.style.overflow='hidden';$('#flightHint').style.opacity=1;keys.clear();pointer=false;sound('start');last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)}$$('.launch').forEach(b=>b.onclick=start);
 function pause(){if(!g?.running||g.paused)return;g.paused=true;keys.clear();showModal('<span class="kicker">ПОЛЁТ ПРИОСТАНОВЛЕН</span><h2>Вселенная подождёт.</h2><p>Таймеры бонусов на паузе.</p><button class="primary" id="resume">Продолжить ↗</button><button class="text-btn" id="endFlight">Завершить и сохранить полёт</button>',resume);$('#resume').onclick=closeModal;$('#endFlight').onclick=()=>{modalClose=()=>{};modal.close();finish()}}
 function resume(){if(g?.running){g.paused=false;last=performance.now()}}$('#pause').onclick=pause;document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});window.addEventListener('blur',pause);
-function finish(){if(!g?.running)return;g.running=false;OrbitaCloud.finish(g.dist,g.coins,g.t*1000);const distance=Math.floor(g.dist);data.balance+=g.coins;data.totalCoins+=g.coins;data.totalDistance+=distance;data.flights++;const record=distance>data.best;data.best=Math.max(data.best,distance);data.history.unshift({date:Date.now(),distance,coins:g.coins});data.history=data.history.slice(0,30);save();render();sound('hit');showModal(`<span class="kicker">${record?'НОВЫЙ ЛИЧНЫЙ РЕКОРД':'ПОЛЁТ ЗАВЕРШЁН'}</span><h2>${record?'Выше. Дальше. Смелее.':'Звёзды ждут возвращения.'}</h2><div class="result-stats"><div><b>${fmt(distance)} м</b><small>Дистанция</small></div><div><b>+${fmt(g.coins)} ◉</b><small>Собрано за полёт</small></div></div><p id="flightSaveStatus" role="status">Результат ожидает подтверждения сервера…</p><button class="primary" id="retry">Ещё один полёт ↗</button><button class="text-btn" id="home">Вернуться в ангар</button>`,leave);$('#retry').onclick=start;$('#home').onclick=closeModal}
+function finish(){if(!g?.running)return;g.running=false;OrbitaCloud.finish(g.dist,g.coins,g.t*1000);OrbitaCloud.prepare?.().catch(()=>{});const distance=Math.floor(g.dist);data.balance+=g.coins;data.totalCoins+=g.coins;data.totalDistance+=distance;data.flights++;const record=distance>data.best;data.best=Math.max(data.best,distance);data.history.unshift({date:Date.now(),distance,coins:g.coins});data.history=data.history.slice(0,30);save();render();sound('hit');showModal(`<span class="kicker">${record?'НОВЫЙ ЛИЧНЫЙ РЕКОРД':'ПОЛЁТ ЗАВЕРШЁН'}</span><h2>${record?'Выше. Дальше. Смелее.':'Звёзды ждут возвращения.'}</h2><div class="result-stats"><div><b>${fmt(distance)} м</b><small>Дистанция</small></div><div><b>+${fmt(g.coins)} ◉</b><small>Собрано за полёт</small></div></div><p id="flightSaveStatus" role="status">Результат ожидает подтверждения сервера…</p><button class="primary" id="retry">Ещё один полёт ↗</button><button class="text-btn" id="home">Вернуться в ангар</button>`,leave);$('#retry').onclick=start;$('#home').onclick=closeModal}
 function leave(){cancelAnimationFrame(raf);$('#game').classList.add('hidden');$('#launchDock').classList.remove('hidden');document.body.style.overflow='';g=null;render()}
 document.addEventListener('keydown',e=>{if(!g?.running)return;if(['ArrowLeft','ArrowRight','KeyA','KeyD','Escape','Space'].includes(e.code)){e.preventDefault();if(e.code==='Escape'||e.code==='Space'){if(g.paused)closeModal();else pause()}else keys.add(e.code)}});document.addEventListener('keyup',e=>keys.delete(e.code));
 canvas.addEventListener('pointerdown',e=>{pointer=true;canvas.setPointerCapture(e.pointerId);move(e)});canvas.addEventListener('pointermove',e=>{if(pointer)move(e)});canvas.addEventListener('pointerup',()=>pointer=false);canvas.addEventListener('pointercancel',()=>pointer=false);function move(e){if(g&&!g.paused)g.target=Math.max(-.88,Math.min(.88,(e.clientX-W/2)/(Math.min(W,760)*.45)))}
@@ -180,6 +170,7 @@ try{const tg=window.Telegram?.WebApp;if(tg?.initData){tg.ready();tg.expand();tg.
 window.addEventListener('orbita-cloud',()=>{const status=$('#flightSaveStatus');if(status)status.textContent=OrbitaCloud.status;const banner=$('#cloudStatus');if(banner)banner.textContent=OrbitaCloud.status;const p=OrbitaCloud.profile;if(p)$('#stats').innerHTML=`<div><small>Дальность за период</small><b>${fmt(p.distance)} м</b></div><div><small>Заработано за период</small><b>◉ ${fmt(p.earned)}</b></div><div><small>Полётов за период</small><b>${fmt(p.flights)}</b></div>`;});
 $('#cloudRetry').onclick=()=>OrbitaCloud.retry();
 OrbitaCloud.retry();
+OrbitaCloud.prepare?.().catch(()=>{});
 
 if(OrbitaCloud.enabled)syncStars().catch(()=>{});
 window.addEventListener('online',()=>syncStars().catch(()=>{}));

@@ -6,6 +6,7 @@ window.OrbitaCloud = (() => {
   const identity=tg?.initDataUnsafe?.user?.id;
   const enabled=!!(tg?.initData && Number.isSafeInteger(identity));
   const key='orbita-run-v1-'+identity;
+  let preparedJob=null,prepared=false;
   let pendingSave=null,contest=null,rankingRows=[],serverOffset=0;
   let active=null, busy=false, release=null, profile=null, status=enabled?'Подключаем бортовой журнал…':'Для общего рейтинга открой игру кнопкой в Telegram.';
   function emit(message){if(message)status=message;window.dispatchEvent(new Event('orbita-cloud'));}
@@ -34,6 +35,7 @@ window.OrbitaCloud = (() => {
   }
   function unlock(){if(release){release();release=null;}}
   async function sendStored(run){
+    if(run.prepared){localStorage.removeItem(key);return;}
     // A lost start response is retried with the same ID before final delivery.
     if(!run.started){await api('start',{runId:run.runId,rulesVersion:run.rulesVersion||'runner-1'});run.started=true;persist(run);}
     const result=await api('finish',{runId:run.runId,...run.result});
@@ -42,7 +44,7 @@ window.OrbitaCloud = (() => {
     localStorage.removeItem(key);emit(result.training?'Тренировочный полёт сохранён. В конкурс не засчитан.':'Полёт записан в таблицу.');
   }
   async function refresh(sort='distance'){
-    const result=await api('leaderboard',{sort});profile=result.profile;contest=result.season;rankingRows=result.rows||[];serverOffset=Date.parse(result.updatedAt||new Date().toISOString())-Date.now();emit();return result;
+    const result=await api('leaderboard',{sort});if(active?.prepared&&contest&&JSON.stringify(contest)!==JSON.stringify(result.season))active.stale=true;profile=result.profile;contest=result.season;rankingRows=result.rows||[];serverOffset=Date.parse(result.updatedAt||new Date().toISOString())-Date.now();emit();return result;
   }
   function retry(){
     if(!enabled||active||busy)return pendingSave||Promise.resolve();
@@ -56,20 +58,37 @@ window.OrbitaCloud = (() => {
     // Reading the leaderboard must not block registration of a new flight.
     return job.then(()=>refresh()).catch(error=>emit(error.message));
   }
-  async function begin(){
+  async function register(){
     if(!enabled)throw new Error('Для записи результата запусти игру кнопкой в @SpaceRacingBot.');
     if(pendingSave)await pendingSave;
     if(busy||active)throw new Error('Полёт уже запускается или открыт.');
     busy=true;
     try{
       await lock();const saved=read();if(saved)await sendStored(saved);
-      const run={runId:crypto.randomUUID(),rulesVersion:'runner-2',started:false,result:{distance:0,coins:0,durationMs:0}};
+      const run={runId:crypto.randomUUID(),rulesVersion:'runner-2',started:false,prepared:true,result:{distance:0,coins:0,durationMs:0}};
       persist(run);emit('Регистрируем полёт…');
       const ack=await api('start',{runId:run.runId,rulesVersion:run.rulesVersion||'runner-1'});
       if(ack.runId!==run.runId)throw new Error('Не удалось подтвердить начало полёта.');
-      run.started=true;run.expiresAt=ack.expiresAt;persist(run);active=run;emit('Полёт зарегистрирован.');
+      run.started=true;run.preparedAt=Date.now();run.expiresAt=ack.expiresAt;persist(run);active=run;emit('Полёт зарегистрирован.');
     }catch(error){unlock();emit(error.message);throw error;}
     finally{busy=false;}
+  }
+  function prepare(){
+    if(!enabled)return Promise.resolve();
+    if(preparedJob)return preparedJob;
+    if(active&&!busy)return Promise.resolve();
+    preparedJob=register().then(()=>{prepared=true;emit('Корабль готов к полёту.');}).finally(()=>{preparedJob=null;});
+    return preparedJob;
+  }
+  async function begin(){
+    if(active&&!prepared&&!busy)throw new Error('Полёт уже открыт.');
+    await prepare();
+    if(!enabled)throw new Error('Для записи результата запусти игру кнопкой в @SpaceRacingBot.');
+    if(!active||!prepared)throw new Error('Не удалось подготовить полёт. Повтори запуск.');
+    if(active.stale||Date.now()-active.preparedAt>120000||Date.now()>=Date.parse(active.expiresAt)-60000){
+      active=null;prepared=false;localStorage.removeItem(key);unlock();await prepare();
+    }
+    prepared=false;active.prepared=false;persist(active);emit('Полёт зарегистрирован.');
   }
   function checkpoint(distance,coins,durationMs){
     if(!active)return;
@@ -82,12 +101,12 @@ window.OrbitaCloud = (() => {
     pendingSave=(async()=>{
       try{checkpoint(distance,coins,durationMs);emit('Сохраняем результат…');await sendStored(active);}
       catch(error){emit('Результат ожидает отправки. '+error.message);}
-      finally{active=null;busy=false;unlock();}
+      finally{active=null;prepared=false;busy=false;unlock();}
     })();
     return pendingSave.then(()=>refresh()).catch(()=>emit('Рейтинг обновится при следующем подключении.'));
   }
   window.addEventListener('online',()=>retry());
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)retry();});
   setInterval(()=>{if(enabled&&!active&&!busy&&read())retry();},30000);
-  return {adminRead:()=>api('adminRead'),adminCommand:fields=>api('adminCommand',fields),get contest(){return contest;},get rankingRows(){return rankingRows;},get serverNow(){return Date.now()+serverOffset;},starsUpgradeInvoice:(type,level)=>api("starsInvoice",{productId:type+"_"+level,termsAccepted:true}),starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
+  return {adminRead:()=>api('adminRead'),adminCommand:fields=>api('adminCommand',fields),get contest(){return contest;},get rankingRows(){return rankingRows;},get serverNow(){return Date.now()+serverOffset;},starsUpgradeInvoice:(type,level)=>api("starsInvoice",{productId:type+"_"+level,termsAccepted:true}),starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,prepare,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
 })();

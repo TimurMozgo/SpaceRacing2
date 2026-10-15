@@ -28,15 +28,8 @@ function buyBonusCoins(type){
 }
 async function showBonusStars(type){
   if(starsBusy||!BONUS_INFO[type])return;
-  if(!OrbitaCloud.enabled){toast('Покупки доступны при запуске игры через Telegram.');return;}
-  starsBusy=true;
-  try{await syncStars();}catch(error){toast(error.message);return;}finally{starsBusy=false;}
   const level=bonusLevel(type)+1;if(level>5)return;
-  if(!starsReady){toast('Оплата Stars временно недоступна.');return;}
-  const upgrade={type,level,name:BONUS_INFO[type].name,seconds:10+level*10};
-  showModal(`<span class="kicker">УЛУЧШЕНИЕ / TELEGRAM STARS</span><h2>${upgrade.name}: ${upgrade.seconds} секунд</h2><div class="stars-price">★ ${level*5} <small>Stars</small></div><p>Постоянное улучшение до ${upgrade.seconds} секунд после каждого подбора. Покупка сохраняется за твоим Telegram-аккаунтом, монеты не списываются.</p><p>Помощь по оплатам и возвратам: <a href="https://t.me/${starsSupport.slice(1)}" target="_blank" rel="noopener">${starsSupport}</a>.</p><label style="display:block;margin:20px 0"><input type="checkbox" id="starsTerms"> Я прочитал и принимаю условия покупки.</label><button class="primary" id="starsPay" disabled>Оплатить ★ ${level*5}</button>`);
-  $('#starsTerms').onchange=()=>{$('#starsPay').disabled=!$('#starsTerms').checked||starsBusy;};
-  $('#starsPay').onclick=()=>payWithStars(null,upgrade);
+  return payWithStars(null,{type,level,name:BONUS_INFO[type].name});
 }
 function initBonusUpgrades(){
   $('#bonusUpgrades').onclick=e=>{const coin=e.target.closest('[data-bonus-coin]'),stars=e.target.closest('[data-bonus-stars]');if(coin)buyBonusCoins(coin.dataset.bonusCoin);else if(stars)showBonusStars(stars.dataset.bonusStars);};

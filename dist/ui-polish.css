@@ -1,0 +1,51 @@
+/* SpaceRacing interface polish: animate only opacity and transforms on entry. */
+:root{--ui-ease:cubic-bezier(.22,1,.36,1);--ui-radius:16px}
+button{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .18s ease}
+button:disabled{transform:none}
+.primary,.secondary,.card-btn{min-height:44px;border-radius:11px;line-height:1.35}
+.primary{gap:12px}
+.icon-btn{min-width:44px;min-height:44px}
+.panel,.ranking-panel,.bonus-upgrade{border-radius:var(--ui-radius)}
+.panel{line-height:1.5}
+.section-title{gap:16px;align-items:center}
+.section-title>div,.profile-heading>div{min-width:0}
+.section-title h2{line-height:1.35;text-wrap:balance}
+.ship-card{border-radius:var(--ui-radius);overflow:hidden;min-width:0;transition:border-color .25s ease,background-color .25s ease,transform .25s var(--ui-ease)}
+.ship-card h3{line-height:1.4;overflow-wrap:anywhere}
+.ship-card p{line-height:1.65}
+.ship-card .card-btn{padding:11px 6px}
+.upgrade-actions,.bonus-buy-actions{row-gap:12px;flex-wrap:wrap}
+.upgrade-actions button{min-height:44px}
+.bonus-buy-actions button{min-width:0}
+.stats>div{border-radius:var(--ui-radius);min-width:0}
+.profile-heading h1{overflow-wrap:anywhere;line-height:1.2}
+.table-wrap,.ranking-table-wrap{overscroll-behavior-x:contain}
+.ranking-table td{vertical-align:middle}
+.balance b,.stats b,.bonus-duration b{font-variant-numeric:tabular-nums}
+nav{box-shadow:0 12px 32px #0005;border-color:#344052}
+nav button{min-height:46px;border-radius:11px;transition:background-color .22s ease,color .22s ease,transform .18s ease}
+#launchDock{border-color:#40556d;box-shadow:0 12px 32px #0006;animation:dock-in .32s var(--ui-ease) both}
+.page:not(.hidden){animation:page-in .32s var(--ui-ease) both}
+dialog{padding:38px 28px 28px;border-radius:22px;border-color:#40516a;background:linear-gradient(150deg,#182333,#101823);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;box-shadow:0 24px 80px #0008}
+dialog[open]{animation:window-in .28s var(--ui-ease) both}
+dialog[open]::backdrop{animation:veil-in .25s ease both;backdrop-filter:none;background:#030812cc}
+dialog h2{line-height:1.25;text-wrap:balance}
+dialog p{line-height:1.75}
+dialog .primary,dialog .secondary{min-height:48px}
+.modal-close{display:grid;place-items:center;right:6px;top:6px;width:44px;height:44px;border-radius:50%;line-height:1;color:#afbbce;background:transparent}
+.modal-close:hover{background:#ffffff0a;color:#fff}
+#modalContent{overflow-wrap:anywhere}
+#toast{max-width:calc(100% - 32px);line-height:1.5;text-align:center;transition:opacity .24s ease,transform .24s var(--ui-ease);pointer-events:none}
+.admin-duration input,.admin-duration select{min-height:46px;border-radius:11px;font:inherit}
+.admin-duration input:focus-visible,.admin-duration select:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+.admin-actions button{min-height:44px}
+@keyframes page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes window-in{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes veil-in{from{opacity:0}to{opacity:1}}
+@keyframes dock-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(hover:hover) and (pointer:fine){.ship-card:hover{transform:translateY(-3px)}}
+@media(max-width:500px){.panel,.bonus-upgrade{padding:20px}.section-title{align-items:flex-start;gap:10px}.section-title h2{font-size:19px}.section-title>.muted{flex-shrink:0;font-size:10px;padding-top:4px}.ship-card{padding:14px 12px}.ship-card .stars-purchase{flex-wrap:wrap;gap:4px}.ship-card .stars-purchase small{font-size:7px}.bonus-buy-actions{gap:8px}.bonus-buy-actions button{font-size:11px}.profile-heading{gap:14px}.profile-heading h1{font-size:28px;letter-spacing:-.8px}dialog{padding:38px 22px 24px}.admin-duration input{flex:1;min-width:90px}nav button{line-height:1.3}#launchDock{gap:10px}#launchDock>div{min-width:0}#launchDock b{font-size:11px;overflow-wrap:anywhere}#launchDock .primary{min-height:46px;padding:12px 14px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+#toast{z-index:1000;top:50%;bottom:auto;left:50%;width:max-content;max-width:min(360px,calc(100% - 40px));padding:18px 22px;border:1px solid #53637a;border-radius:16px;background:#152133f5;box-shadow:0 16px 48px #0008;transform:translate(-50%,calc(-50% + 8px));font-size:14px}
+#toast.show{transform:translate(-50%,-50%)}
