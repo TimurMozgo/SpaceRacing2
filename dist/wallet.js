@@ -3,6 +3,7 @@ let walletBusy=false,walletReady=false,walletSync=null;
 const walletCommandKey=()=> 'spaceracing-coin-command-'+OrbitaCloud.identity;
 function walletApply(wallet){
  if(!wallet||!Number.isSafeInteger(wallet.balance))throw new Error('Не удалось проверить баланс.');
+ if(wallet.resetKey&&data.walletResetKey!==wallet.resetKey){data.history=[];data.best=0;data.totalCoins=0;data.totalDistance=0;data.flights=0;data.selected=0;data.walletResetKey=wallet.resetKey;}
  data.balance=wallet.balance;data.coinShips=wallet.owned.ships;data.gun=wallet.owned.gun;
  data.bonusLevels={magnet:wallet.owned.magnet,double:wallet.owned.double};
  if(!ownsShip(data.selected))data.selected=0;walletReady=true;save();render();

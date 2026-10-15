@@ -16,7 +16,7 @@ window.OrbitaCloud = (() => {
     if(!enabled)throw new Error('Открой игру кнопкой в Telegram.');
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),25000);
     try{
-      const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({...fields,action,initData:tg.initData}),signal:controller.signal,credentials:'omit',redirect:'follow'});
+      const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({...fields,action,storageVersion:4,initData:tg.initData}),signal:controller.signal,credentials:'omit',redirect:'follow'});
       if(!response.ok)throw new Error('Сервер временно недоступен. Результат остаётся на устройстве.');
       const result=await response.json();
       if(!result.ok){const error=new Error(result.message||'Ошибка сервера');error.code=result.error;throw error;}
@@ -44,7 +44,7 @@ window.OrbitaCloud = (() => {
     localStorage.removeItem(key);emit(result.training?'Тренировочный полёт сохранён. В конкурс не засчитан.':'Полёт записан в таблицу.');
   }
   async function refresh(sort='distance'){
-    const result=await api('leaderboard',{sort});if(active?.prepared&&contest&&JSON.stringify(contest)!==JSON.stringify(result.season))active.stale=true;profile=result.profile;contest=result.season;rankingRows=result.rows||[];serverOffset=Date.parse(result.updatedAt||new Date().toISOString())-Date.now();emit();return result;
+    const result=await api('leaderboard',{sort});if(active?.prepared&&contest&&JSON.stringify([contest.id,contest.status,contest.epoch])!==JSON.stringify([result.season?.id,result.season?.status,result.season?.epoch]))active.stale=true;profile=result.profile;contest=result.season;rankingRows=result.rows||[];serverOffset=Date.parse(result.updatedAt||new Date().toISOString())-Date.now();emit();return result;
   }
   function retry(){
     if(!enabled||active||busy)return pendingSave||Promise.resolve();
