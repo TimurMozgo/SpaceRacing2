@@ -35,7 +35,7 @@ window.OrbitaCloud = (() => {
   }
   function unlock(){if(release){release();release=null;}}
   async function sendStored(run){
-    if(run.prepared){localStorage.removeItem(key);return;}
+    if(run.prepared){if(!run.started)await api('start',{runId:run.runId,rulesVersion:run.rulesVersion});await api('abandon',{runId:run.runId});localStorage.removeItem(key);return;}
     // A lost start response is retried with the same ID before final delivery.
     if(!run.started){await api('start',{runId:run.runId,rulesVersion:run.rulesVersion||'runner-1'});run.started=true;persist(run);}
     const result=await api('finish',{runId:run.runId,...run.result});
@@ -86,7 +86,7 @@ window.OrbitaCloud = (() => {
     if(!enabled)throw new Error('Для записи результата запусти игру кнопкой в @SpaceRacingBot.');
     if(!active||!prepared)throw new Error('Не удалось подготовить полёт. Повтори запуск.');
     if(active.stale||Date.now()-active.preparedAt>120000||Date.now()>=Date.parse(active.expiresAt)-60000){
-      active=null;prepared=false;localStorage.removeItem(key);unlock();await prepare();
+      await api('abandon',{runId:active.runId});active=null;prepared=false;localStorage.removeItem(key);unlock();await prepare();
     }
     prepared=false;active.prepared=false;persist(active);emit('Полёт зарегистрирован.');
   }
@@ -108,5 +108,5 @@ window.OrbitaCloud = (() => {
   window.addEventListener('online',()=>retry());
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)retry();});
   setInterval(()=>{if(enabled&&!active&&!busy&&read())retry();},30000);
-  return {adminRead:()=>api('adminRead'),adminCommand:fields=>api('adminCommand',fields),get contest(){return contest;},get rankingRows(){return rankingRows;},get serverNow(){return Date.now()+serverOffset;},starsUpgradeInvoice:(type,level)=>api("starsInvoice",{productId:type+"_"+level,termsAccepted:true}),starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,prepare,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
+  return {wallet:legacy=>api('wallet',{legacy}),coinPurchase:fields=>api('coinPurchase',fields),adminPlayer:playerId=>api('adminPlayer',{playerId}),adminAdjust:fields=>api('adminAdjust',fields),get pendingResult(){const r=read();return !!(r&&!r.prepared);},adminRead:()=>api('adminRead'),adminCommand:fields=>api('adminCommand',fields),get contest(){return contest;},get rankingRows(){return rankingRows;},get serverNow(){return Date.now()+serverOffset;},starsUpgradeInvoice:(type,level)=>api("starsInvoice",{productId:type+"_"+level,termsAccepted:true}),starsStatus:()=>api("starsStatus"),starsInvoice:shipId=>api("starsInvoice",{shipId,termsAccepted:true}),enabled,identity,prepare,begin,checkpoint,finish,retry,refresh,get profile(){return profile;},get status(){return status;},get pending(){try{return !!read();}catch{return true;}},get expiresAt(){return active?.expiresAt;}};
 })();

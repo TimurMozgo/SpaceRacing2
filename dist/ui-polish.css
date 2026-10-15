@@ -49,3 +49,5 @@ dialog .primary,dialog .secondary{min-height:48px}
 
 #toast{z-index:1000;top:50%;bottom:auto;left:50%;width:max-content;max-width:min(360px,calc(100% - 40px));padding:18px 22px;border:1px solid #53637a;border-radius:16px;background:#152133f5;box-shadow:0 16px 48px #0008;transform:translate(-50%,calc(-50% + 8px));font-size:14px}
 #toast.show{transform:translate(-50%,-50%)}
+
+#playerId{width:190px}#playerMetric,#playerMode{width:160px}#playerAmount{width:160px}#playerStatus{line-height:1.6;color:#bafa78}

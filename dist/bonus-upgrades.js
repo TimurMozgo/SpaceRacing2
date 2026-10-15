@@ -18,14 +18,12 @@ function buyBonusCoins(type){
   const price=BONUS_COSTS[level],info=BONUS_INFO[type];
   if(data.balance<price){toast('Нужно ещё '+fmt(price-data.balance)+' монет.');return;}
   showModal(`<span class="kicker">УЛУЧШЕНИЕ БОНУСА</span><h2>${info.name}: ${20+level*10} секунд</h2><p>Длительность после каждого подбора увеличится с ${10+level*10} до ${20+level*10} секунд.</p><button class="primary" id="confirmBonusCoins">Улучшить за ◉ ${fmt(price)}</button>`);
-  $('#confirmBonusCoins').onclick=()=>{
-    if(starsBusy||bonusLevel(type)!==level||data.balance<price)return;
-    const next={...data,balance:data.balance-price,bonusLevels:{...data.bonusLevels,[type]:level+1}};
-    // Commit balance and tier together; a storage error must not report success.
-    try{localStorage.setItem(progressKey,JSON.stringify(next));}catch{toast('Не удалось сохранить улучшение. Освободи место и повтори.');return;}
-    data=next;closeModal();render();sound('buy');toast(info.name+' улучшен до '+bonusSeconds(type)+' секунд.');
+  $('#confirmBonusCoins').onclick=async()=>{
+    if(starsBusy||walletBusy||bonusLevel(type)!==level)return;
+    if(await buyCoins(type+'_'+(level+1))){closeModal();sound('buy');toast(info.name+' улучшен до '+bonusSeconds(type)+' секунд.');}
   };
 }
+
 async function showBonusStars(type){
   if(starsBusy||!BONUS_INFO[type])return;
   const level=bonusLevel(type)+1;if(level>5)return;
