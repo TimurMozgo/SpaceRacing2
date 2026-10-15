@@ -21,7 +21,6 @@ function renderRanking(){
     player.append(rankingText('span',String(i+1),'rank-medal'),playerAvatar(r.photoUrl,'rank-avatar'),rankingText('b',r.nickname+(r.isMe?' · ты':''),'rank-name'));name.append(player);
     const distance=document.createElement('td');distance.append(rankingText('span',fmt(r.distance)+' м','rank-distance'));tr.append(name,distance);body.append(tr);
   });
-  const mine=$('#personalRankingStats');mine.replaceChildren(rankingText('b',fmt(OrbitaCloud.profile?.distance||0)+' м'),rankingText('span','суммарная дальность за конкурс'));
 }
 $$('nav button').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.page==='leaderboard'){renderRanking();loadRanking()}}));
 renderRanking();

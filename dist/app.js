@@ -164,8 +164,8 @@ function frame(now){if(!g)return;const dt=Math.min((now-last)/1000,.04);last=now
 try{const tg=window.Telegram?.WebApp;if(tg?.initData){tg.ready();tg.expand();tg.setHeaderColor('#080c15');tg.setBackgroundColor('#080c15');const user=tg.initDataUnsafe?.user;if(user?.first_name)$('#pilotName').textContent=user.first_name}}catch{}render();
 
 
-window.addEventListener('orbita-cloud',()=>{const status=$('#flightSaveStatus');if(status)status.textContent=OrbitaCloud.status;const banner=$('#cloudStatus');if(banner)banner.textContent=OrbitaCloud.status;const p=OrbitaCloud.profile;if(p)$('#stats').innerHTML=`<div><small>Дальность за период</small><b>${fmt(p.distance)} м</b></div><div><small>Заработано за период</small><b>◉ ${fmt(p.earned)}</b></div><div><small>Полётов за период</small><b>${fmt(p.flights)}</b></div>`;});
-$('#cloudRetry').onclick=()=>OrbitaCloud.retry();
+window.addEventListener('orbita-cloud',()=>{const status=$('#flightSaveStatus');if(status)status.textContent=OrbitaCloud.status;const p=OrbitaCloud.profile;if(p)$('#stats').innerHTML=`<div><small>Дальность за период</small><b>${fmt(p.distance)} м</b></div><div><small>Заработано за период</small><b>◉ ${fmt(p.earned)}</b></div><div><small>Полётов за период</small><b>${fmt(p.flights)}</b></div>`;});
+
 Promise.resolve(OrbitaCloud.retry()).then(()=>syncWallet()).catch(()=>{});
 OrbitaCloud.prepare?.().catch(()=>{});
 
